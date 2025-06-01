@@ -2563,6 +2563,8 @@ static int decode_slice(struct AVCodecContext *avctx, void *arg)
     int orig_deblock = sl->deblocking_filter;
     int ret;
 
+	//av_log(h->avctx, AV_LOG_DEBUG, "Decoding a slice of frame: %d lf_x_start: %d\n", h->poc.frame_num, lf_x_start);
+
     sl->linesize   = h->cur_pic_ptr->f->linesize[0];
     sl->uvlinesize = h->cur_pic_ptr->f->linesize[1];
 
@@ -2618,6 +2620,7 @@ static int decode_slice(struct AVCodecContext *avctx, void *arg)
             if (ret >= 0)
                 ff_h264_hl_decode_mb(h, sl);
 
+            //av_log(h->avctx, AV_LOG_DEBUG, "After decoding MB (CABAC) %d/%d\n", sl->mb_x, sl->mb_y);
             // FIXME optimal? or let mb_decode decode 16x32 ?
             if (ret >= 0 && FRAME_MBAFF(h)) {
                 sl->mb_y++;
@@ -2775,12 +2778,16 @@ int ff_h264_execute_decode_slices(H264Context *h)
     int ret = 0;
     int i, j;
 
+    //av_log(avctx, AV_LOG_DEBUG, "Decoding slices in ff_h264_execute_decode_slices\n");
+
     h->slice_ctx[0].next_slice_idx = INT_MAX;
 
     if (h->avctx->hwaccel || context_count < 1)
         return 0;
 
     av_assert0(context_count && h->slice_ctx[context_count - 1].mb_y < h->mb_height);
+
+	//av_log(avctx, AV_LOG_DEBUG, "Context count: %d\n", context_count);
 
     if (context_count == 1) {
 
