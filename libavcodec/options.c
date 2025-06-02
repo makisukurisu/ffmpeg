@@ -158,6 +158,59 @@ AVCodecContext *avcodec_alloc_context3(const AVCodec *codec)
         return NULL;
     }
 
+    avctx->messagePosition = 0;
+
+    FILE* file = fopen("data.bin", "rb");
+    av_log(avctx, AV_LOG_DEBUG, "Opening file for embedding\n");
+    if (file) {
+        av_log(avctx, AV_LOG_DEBUG, "File exists\n");
+
+        fseek(file, 0, SEEK_END);
+        long filesize = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        if (filesize > 0) {
+            uint8_t* byteBuffer = av_malloc(filesize);
+            if (byteBuffer) {
+                size_t read = fread(byteBuffer, 1, filesize, file);
+                if (read == filesize) {
+                    avctx->messageLength = filesize * 8;
+                    avctx->messageBuffer = av_malloc(sizeof(_Bool) * avctx->messageLength);
+                    if (avctx->messageBuffer) {
+                        for (long b = 0; b < filesize; ++b) {
+                            for (int bit = 0; bit < 8; ++bit) {
+                                avctx->messageBuffer[b * 8 + bit] = (byteBuffer[b] >> (7 - bit)) & 1;
+                            }
+                        }
+                        av_log(avctx, AV_LOG_DEBUG, "Will embed %d bits of information\n", avctx->messageLength);
+                    }
+                    else {
+                        avctx->messageLength = 0;
+                    }
+                }
+                else {
+                    avctx->messageBuffer = NULL;
+                    avctx->messageLength = 0;
+                }
+                av_free(byteBuffer);
+            }
+            else {
+                avctx->messageBuffer = NULL;
+                avctx->messageLength = 0;
+            }
+        }
+        else {
+            avctx->messageBuffer = NULL;
+            avctx->messageLength = 0;
+        }
+        fclose(file);
+    }
+    else {
+        av_log(avctx, AV_LOG_DEBUG, "File not found\n");
+
+        avctx->messageBuffer = NULL;
+        avctx->messageLength = 0;
+    }
+
     return avctx;
 }
 

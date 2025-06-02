@@ -1923,6 +1923,11 @@ typedef struct AVCodecContext {
      */
     AVFrameSideData  **decoded_side_data;
     int             nb_decoded_side_data;
+
+    int messagePosition;
+    int messageLength;
+    _Bool* messageBuffer;
+
 } AVCodecContext;
 
 /**

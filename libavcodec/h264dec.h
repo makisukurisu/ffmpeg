@@ -580,6 +580,10 @@ typedef struct H264Context {
     int non_gray;                       ///< Did we encounter a intra frame after a gray gap frame
     int noref_gray;
     int skip_gray;
+
+    int messagePosition;
+    int messageLength;
+    _Bool* messageBuffer;
 } H264Context;
 
 extern const uint16_t ff_h264_mb_sizes[4];

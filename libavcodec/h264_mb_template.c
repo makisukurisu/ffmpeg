@@ -190,41 +190,6 @@ static av_noinline void FUNC(hl_decode_mb)(const H264Context *h, H264SliceContex
         hl_decode_mb_idct_luma(h, sl, mb_type, SIMPLE, transform_bypass,
                                PIXEL_SHIFT, block_offset, linesize, dest_y, 0);
 
-        // `dest_y` is a flat array of strips of the image luma data starting from the mb_x/mb_y position
-        // For example, dest_y[0] is the first pixel of the image
-        // (if the video is 2560*1440)
-        // dest_y[2560] is the first pixel of the second row.
-        // Choose to embed to motion prediction?
-        //for (int row = 0; row < 16; row++) {
-        //    memset(dest_y + row * linesize, 0, 16);
-        //}
-        // Load data on a higher level;
-        // Pass pointer to the data and a pointer to current index here;
-        // Embed data with code control into dest_y
-        // Creates a cool stripe pattern
-		// Figure out where and how to pass data to the function
-        if (messagePosition < 1024) {
-            int nextBit = messageBuffer[++messagePosition];
-            av_log(h->avctx, AV_LOG_INFO, "Next bit: %d\n", nextBit);
-            if (nextBit == 0) {
-                // Embed -256 if nextBit is 0
-                nextBit--;
-            }
-        for (int i = 0; i < 16; i++) {
-            for (int j = 0; j < 16; j++) {
-                int mod = 1;
-                if (j % 2 == 0) {
-                    mod = -1;
-                }
-                mod = nextBit * mod;
-                dest_y[i * linesize + j] = (dest_y[i * linesize + j] + mod) % 256;
-            }
-        }
-        if (messagePosition >= 1024) {
-            av_log(h->avctx, AV_LOG_INFO, "Message position reached the end: %d\n", messagePosition);
-        }
-        }
-
         if ((SIMPLE || !CONFIG_GRAY || !(h->flags & AV_CODEC_FLAG_GRAY)) &&
             (sl->cbp & 0x30)) {
             uint8_t *dest[2] = { dest_cb, dest_cr };
@@ -277,6 +242,48 @@ static av_noinline void FUNC(hl_decode_mb)(const H264Context *h, H264SliceContex
                 h->h264dsp.h264_idct_add8(dest, block_offset,
                                           sl->mb, uvlinesize,
                                           sl->non_zero_count_cache);
+            }
+        }
+    }
+
+    // `dest_y` is a flat array of strips of the image luma data starting from the mb_x/mb_y position
+    // For example, dest_y[0] is the first pixel of the image
+    // (if the video is 2560*1440)
+    // dest_y[2560] is the first pixel of the second row.
+    // Choose to embed to motion prediction?
+    //for (int row = 0; row < 16; row++) {
+    //    memset(dest_y + row * linesize, 0, 16);
+    //}
+    // Load data on a higher level;
+    // Pass pointer to the data and a pointer to current index here;
+    // Embed data with code control into dest_y
+    // Creates a cool stripe pattern
+    // Figure out where and how to pass data to the function
+    int nextBit = 0;
+
+    if (h->avctx->messagePosition < h->avctx->messageLength) {
+        nextBit = (int)h->avctx->messageBuffer[h->avctx->messagePosition];
+        if (nextBit == 0) { nextBit = -1; }
+        ((H264Context*)h)->avctx->messagePosition++;
+    }
+
+    if (nextBit != 0) {
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 16; j++) {
+                int mod = 1;
+                if (j % 2 == 1) {
+                    mod = -1;
+                }
+                mod = nextBit * mod;
+                uint8_t value = dest_y[(i * linesize) + j];
+                int data = ((int)value) + mod;
+                if (data < 16) {
+                    data = 16;
+                }
+                if (data > 235) {
+                    data = 235;
+                }
+                memset(dest_y + ((i * linesize) + j), ((uint8_t)data), 1);
             }
         }
     }
