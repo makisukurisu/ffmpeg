@@ -259,31 +259,34 @@ static av_noinline void FUNC(hl_decode_mb)(const H264Context *h, H264SliceContex
     // Embed data with code control into dest_y
     // Creates a cool stripe pattern
     // Figure out where and how to pass data to the function
-    int nextBit = 0;
+    if (IS_INTRA16x16(mb_type)) {
+        int nextBit = 0;
 
-    if (h->avctx->messagePosition < h->avctx->messageLength) {
-        nextBit = (int)h->avctx->messageBuffer[h->avctx->messagePosition];
-        if (nextBit == 0) { nextBit = -1; }
-        ((H264Context*)h)->avctx->messagePosition++;
-    }
+        if (h->avctx->messagePosition < h->avctx->messageLength) {
+            nextBit = (int)h->avctx->messageBuffer[h->avctx->messagePosition];
+            if (nextBit == 0) { nextBit = -1; }
+            ((H264Context*)h)->avctx->messagePosition++;
+        }
 
-    if (nextBit != 0) {
-        for (int i = 0; i < 16; i++) {
-            for (int j = 0; j < 16; j++) {
-                int mod = 1;
-                if (j % 2 == 1) {
-                    mod = -1;
+        if (nextBit != 0) {
+            for (int i = 0; i < 16; i++) {
+                for (int j = 0; j < 16; j++) {
+                    int mod = 1;
+                    if (j % 2 == 1) {
+                        mod = -1;
+                    }
+                    mod = nextBit * mod;
+                    uint8_t value = dest_y[(i * linesize) + j];
+                    int data = ((int)value) + mod;
+                    if (data < 0) {
+                        data = 0;
+                    }
+                    if (data > 255) {
+                        data = 255;
+                    }
+                    // What color space is this in? Y can reach 0 - 246 at least :shrug:
+                    memset(dest_y + ((i * linesize) + j), ((uint8_t)data), 1);
                 }
-                mod = nextBit * mod;
-                uint8_t value = dest_y[(i * linesize) + j];
-                int data = ((int)value) + mod;
-                if (data < 16) {
-                    data = 16;
-                }
-                if (data > 235) {
-                    data = 235;
-                }
-                memset(dest_y + ((i * linesize) + j), ((uint8_t)data), 1);
             }
         }
     }

@@ -14,6 +14,18 @@ export PATH="/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MS
 
 Debug build
 ```
+Old:
 ./configure --enable-asm --enable-shared --disable-static --disable-bzlib --disable-libopenjpeg --disable-iconv --disable-zlib --prefix=/c/ffmpeg --toolchain=msvc --arch=amd64 --extra-cflags="-MDd" --extra-ldflags="/NODEFAULTLIB:libcmt" --enable-debug
+./configure --enable-libx264 --enable-gpl --enable-asm --enable-shared --disable-static --disable-bzlib --disable-libopenjpeg --disable-iconv --disable-zlib --prefix=/c/ffmpeg --toolchain=msvc --arch=amd64 --extra-cflags="-MDd" --extra-ldflags="/NODEFAULTLIB:libcmt" --enable-debug
 make -j6 && make install && echo -en "\007"
+```
+
+```
+CC=cl PKG_CONFIG_PATH=../installed/lib/pkgconfig ./configure --prefix=../installed --toolchain=msvc --target-os=win64 --arch=x86_64 --enable-asm --disable-shared --enable-static --enable-libx264 --enable-gpl --enable-nonfree --enable-debug --disable-optimizations --extra-ldflags="-LIBPATH:../installed/lib" --extra-cxxflags="-I../installed/include/ -MTd -O1 -Z7" --extra-cflags="-I../installed/include/ -MTd -O1 -Z7"
+make -j6 && make install && echo -en "\007"
+```
+
+(In ffmpeg dir)
+```
+../installed/bin/ffmpeg.exe -i ../Videos/real_2.mp4 -c:v h264 -c:a copy ../Videos/real_2-mod.mp4 -v trace
 ```
