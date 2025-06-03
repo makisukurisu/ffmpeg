@@ -250,42 +250,46 @@ static av_noinline void FUNC(hl_decode_mb)(const H264Context *h, H264SliceContex
     // For example, dest_y[0] is the first pixel of the image
     // (if the video is 2560*1440)
     // dest_y[2560] is the first pixel of the second row.
-    // Choose to embed to motion prediction?
-    //for (int row = 0; row < 16; row++) {
-    //    memset(dest_y + row * linesize, 0, 16);
-    //}
-    // Load data on a higher level;
-    // Pass pointer to the data and a pointer to current index here;
-    // Embed data with code control into dest_y
-    // Creates a cool stripe pattern
-    // Figure out where and how to pass data to the function
+    // Using 16x16 macroblocks for embedding for now.
+    // Since Y data is 16 * 16 macroblock anyway
     if (IS_INTRA16x16(mb_type)) {
         int nextBit = 0;
 
+        // Reading next bit and converting it to +1 or -1
         if (h->avctx->messagePosition < h->avctx->messageLength) {
             nextBit = (int)h->avctx->messageBuffer[h->avctx->messagePosition];
             if (nextBit == 0) { nextBit = -1; }
             ((H264Context*)h)->avctx->messagePosition++;
         }
 
+        // If we're out of bits - do nothing
         if (nextBit != 0) {
             for (int i = 0; i < 16; i++) {
                 for (int j = 0; j < 16; j++) {
                     int mod = 1;
+                    // Creates alternating pattern for modification of element 0, 1 in WHT 16x16
                     if (j % 2 == 1) {
                         mod = -1;
                     }
+                    // Calculates the difference (mod-ification) to the pixel values
                     mod = nextBit * mod;
+                    // Extract and modify the value 
                     uint8_t value = dest_y[(i * linesize) + j];
                     int data = ((int)value) + mod;
+
+                    // Clip results to 0-255 range (uing8_t size)
+                    // Even though it appears to be a YCbCr color space, we operate on a whole 8bit range
+                    // Instead of expected 16-235
                     if (data < 0) {
                         data = 0;
                     }
                     if (data > 255) {
                         data = 255;
                     }
-                    // What color space is this in? Y can reach 0 - 246 at least :shrug:
-                    memset(dest_y + ((i * linesize) + j), ((uint8_t)data), 1);
+
+                    dest_y[(i * linesize) + j] = (uint8_t)data;
+                    // Alternate way, doesn't seem to make a difference in our case
+                    //memset(dest_y + ((i * linesize) + j), ((uint8_t)data), 1);
                 }
             }
         }
